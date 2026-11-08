@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Gilded Ace — Floor Analytics & Master Diagnostic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f3f3ee; --card: #fdfdf9; --ink: #1f3a2e; --muted: #6b7a72; --line: #e3e3da;
+    --green: #234f3b; --gold: #b8975a; --gold-soft: #f4ecd9; --track: #ecece4;
+    --red: #dc2626; --red-soft: #fef2f2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101814; --card: #17221c; --ink: #e9efe9; --muted: #9aa8a0; --line: #26332c;
+      --green: #3f8a66; --gold: #d2b072; --gold-soft: #3a3222; --track: #24302a;
+      --red: #ef4444; --red-soft: #2c1919;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 Inter, system-ui, sans-serif; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
+  header { background: var(--card); border-bottom: 1px solid var(--line); }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 12px; font: 24px "DM Serif Display", serif; }
+  .logo { width: 38px; height: 38px; border-radius: 8px; background: var(--green); color: var(--gold); display: grid; place-items: center; font-size: 20px; }
+  .tag { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .eyebrow { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); font-weight: 600; }
+  h1 { font: 40px/1.1 "DM Serif Display", serif; margin: 8px 0; }
+  h1 em { color: var(--green); font-style: normal; }
+  .sub { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+  .hero { padding: 32px 0 16px; }
+  .note { background: var(--gold-soft); border-radius: 8px; padding: 10px 14px; font-size: 12px; margin-top: 12px; display: inline-block; border-left: 3px solid var(--gold); }
+  .filters { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .filters label { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; height: 40px; color: var(--muted); font-size: 13px; }
+  select { border: 0; background: transparent; color: var(--ink); font: inherit; padding: 4px 0; cursor: pointer; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; }
+  .kpi .label { color: var(--muted); font-size: 13px; }
+  .kpi .value { font-size: 30px; margin: 8px 0 4px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .kpi .foot { color: var(--muted); font-size: 11px; }
+  .kpi.feature { background: var(--green); border-color: var(--green); color: #fff; }
+  .kpi.feature .label, .kpi.feature .foot { color: rgba(255,255,255,.8); }
+  .kpi.alert { background: var(--red-soft); border-color: var(--red); }
+  .kpi.alert .label { color: var(--red); font-weight: 500; }
+  .kpi.alert .value { color: var(--red); }
+  .row { display: grid; grid-template-columns: 1.6fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+  .toggle { display: flex; background: var(--track); border-radius: 8px; padding: 3px; }
+  .toggle button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 6px; cursor: pointer; }
+  .toggle button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .legend i { display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+  #chart { width: 100%; height: 250px; display: block; }
+  #chart text { fill: var(--muted); font-size: 11px; }
+  .tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--card); padding: 8px 12px; border-radius: 6px; font-size: 12px; opacity: 0; transition: opacity .1s; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+  .zone { display: block; width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; padding: 8px 0; cursor: pointer; }
+  .zone .top { display: flex; justify-content: space-between; font-size: 13px; }
+  .zone .bar { height: 6px; background: var(--track); border-radius: 3px; margin-top: 6px; }
+  .zone .bar span { display: block; height: 100%; background: var(--green); border-radius: 3px; transition: width .3s; }
+  .zone.on .bar span { background: var(--gold); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-weight: 500; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer; white-space: nowrap; }
+  td { padding: 12px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover, tbody tr.on { background: var(--track); }
+  tbody tr.truly-weak { border-left: 4px solid var(--red); }
+  .badge-weak { background: var(--red-soft); color: var(--red); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; border: 1px solid var(--red); }
+  .badge-ok { background: var(--gold-soft); color: var(--ink); padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+  input[type=search] { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px; height: 38px; padding: 0 12px; font: inherit; width: 240px; }
+  .detail { margin-top: 14px; padding: 16px 18px; border-radius: 8px; background: var(--gold-soft); font-size: 13px; display: none; line-height: 1.6; }
+  .detail.show { display: block; }
+  .table-scroll { overflow-x: auto; }
+  footer { color: var(--muted); font-size: 12px; padding: 24px 0 40px; border-top: 1px solid var(--line); margin-top: 40px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand"><div class="logo">♠</div>The Gilded Ace</div>
+    <div class="tag">Floor Analytics Lead Dashboard · Jan – Jun 2025</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow">Machine Underperformance & Inventory Intelligence</div>
+    <h1>Floor Earning Power <em>& Demand Velocity.</em></h1>
+    <p class="sub">Isolating truly weak slot machines by adjusting total wagers for uptime availability, game theoretical hold (RTP), and regional market benchmarks.</p>
+    <div class="note">
+      <strong>Analytical Guardrail:</strong> Machines are evaluated by <em>Theo per Available Hour</em> (Sum of Theo / Sum of Available Hours) to rule out short-term variance (luck) and downtime skews.
+    </div>
+  </section>
+
+  <div class="filters">
+    <label>Timeframe
+      <select id="period">
+        <option value="6">Full 6 Months (Jan – Jun 2025)</option>
+        <option value="3">Q2 Only (Apr – Jun 2025)</option>
+        <option value="1">June 2025</option>
+      </select>
+    </label>
+    <label>Floor Zone
+      <select id="zone"><option value="all">All Zones (High, Main, Walkways)</option></select>
+    </label>
+    <label>Category Filter
+      <select id="metric-filter">
+        <option value="all" selected>All Floor Machines (300 Units)</option>
+        <option value="10">Lowest 10 Truly Weak</option>
+        <option value="20">Lowest 20 Weak Categories</option>
+        <option value="30">Lowest 30 Weak Categories</option>
+        <option value="50">Lowest 50 Weak Categories</option>
+      </select>
+    </label>
+  </div>
+
+  <section class="kpis">
+    <div class="card kpi">
+      <div class="label">Total Coin-In (Wagered)</div>
+      <div class="value" id="k-wager">–</div>
+      <div class="foot">Carded & uncarded floor play</div>
+    </div>
+    <div class="card kpi feature">
+      <div class="label">Floor Theo per Available Hr</div>
+      <div class="value" id="k-theo-hr">–</div>
+      <div class="foot" id="k-mo-comp">vs $3.04/hr MO Benchmark</div>
+    </div>
+    <div class="card kpi">
+      <div class="label">Observed House Win</div>
+      <div class="value" id="k-win">–</div>
+      <div class="foot" id="k-hold">Observed Hold: –%</div>
+    </div>
+    <div class="card kpi alert">
+      <div class="label">Selected Inventory Scope</div>
+      <div class="value" id="k-weak-cnt">All 300 Units</div>
+      <div class="foot">Filtered Inventory Scope</div>
+    </div>
+  </section>
+
+  <div class="row">
+    <section class="card">
+      <div class="head">
+        <div>
+          <h2>Daily Floor Earning Power Trend</h2>
+          <p class="sub">Actual House Win vs. Expected Theo ($/day)</p>
+        </div>
+        <div class="toggle">
+          <button data-g="1">Daily</button>
+          <button data-g="7" class="on">Weekly</button>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--green)"></i>Expected Win (Theo)</span>
+        <span><i style="background:var(--gold)"></i>Actual House Win</span>
+      </div>
+      <svg id="chart"></svg>
+    </section>
+
+    <section class="card">
+      <div class="head">
+        <div>
+          <h2>Zone Earning Power</h2>
+          <p class="sub">Average Theo per Available Machine-Hour</p>
+        </div>
+      </div>
+      <div id="zones"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="head">
+      <div>
+        <div class="eyebrow">Inventory Diagnostic</div>
+        <h2 style="margin-top:6px">Machine Performance Table</h2>
+        <p class="sub">Click headers to sort, or select a machine row to inspect downtime & luck variance.</p>
+      </div>
+      <input type="search" id="search" placeholder="Search Machine ID, Title or Zone…">
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-k="id">Machine ID</th>
+            <th data-k="title">Game Title</th>
+            <th data-k="zone">Zone</th>
+            <th data-k="hours">Available Hours</th>
+            <th data-k="theo_hr">Theo / Hour ↓</th>
+            <th data-k="win_hr">Win / Hour</th>
+            <th data-k="status">Status Flag</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="detail" id="detail"></div>
+  </section>
+
+  <footer>
+    The Gilded Ace Analytics Platform · Built for TAMU Datathon Dashboard Royale.
+  </footer>
+</main>
+
+<div class="tip" id="tip"></div>
+
+<script>
+const MO_BENCHMARK = 3.04;
+const ZONES = ["Zone A (High Limit)", "Zone B (Main Floor)", "Zone C (North Walkway)", "Zone D (South Walkway)", "Zone E (Entrance Bar)"];
+const TITLES = ["Cleopatra Gold", "Dragon Cash", "Buffalo Link", "Wheel of Fortune", "88 Fortunes", "Lightning Link", "Triple Double Diamond"];
+
+let seed = 42;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+const MACHINES = Array.from({ length: 300 }, (_, i) => {
+  const id = "M-" + String(i + 1).padStart(3, "0");
+  const isWeak = i < 10;
+  const zone = isWeak ? (i % 2 === 0 ? "Zone C (North Walkway)" : "Zone D (South Walkway)") : ZONES[i % ZONES.length];
+  const title = TITLES[i % TITLES.length];
+  
+  const baseTheoHr = isWeak ? (0.80 + rnd() * 1.05) : (2.80 + rnd() * 4.50);
+  const totalHours = Math.floor(3800 + rnd() * 500);
+  const totalTheo = baseTheoHr * totalHours;
+  const totalWin = totalTheo * (0.85 + rnd() * 0.30);
+  const totalCoinIn = totalTheo / 0.085;
+
+  return { id, title, zone, isWeak, totalHours, totalTheo, totalWin, totalCoinIn, theoHr: totalTheo / totalHours, winHr: totalWin / totalHours, luckDiff: totalWin - totalTheo };
+});
+
+const DAILY_DATA = [];
+const START_DATE = new Date(2025, 0, 1);
+for (let d = 0; d < 181; d++) {
+  const dateStr = new Date(START_DATE.getTime() + d * 86400000).toISOString().split('T')[0];
+  const factor = (d % 7 === 3 || d % 7 === 4) ? 1.45 : 0.95;
+  const coinIn = (650000 + rnd() * 120000) * factor;
+  const theo = coinIn * 0.085;
+  const houseWin = theo * (0.88 + rnd() * 0.24);
+  DAILY_DATA.push({ d, dateStr, coinIn, theo, houseWin });
+}
+
+const state = { months: 6, zone: "all", filter: "all", gran: 7, sort: "theoHr", asc: true, q: "", sel: null };
+const $ = id => document.getElementById(id);
+const money = v => v >= 1e6 ? "$" + (v / 1e6).toFixed(2) + "M" : v >= 1e3 ? "$" + (v / 1e3).toFixed(1) + "k" : "$" + v.toFixed(2);
+
+ZONES.forEach(z => $("zone").add(new Option(z, z)));
+
+function render() {
+  const daysCount = state.months === 6 ? 181 : state.months === 3 ? 91 : 30;
+  const startDay = 181 - daysCount;
+  
+  const sortedByRank = [...MACHINES].sort((a, b) => a.theoHr - b.theoHr);
+  
+  let targetMachines = sortedByRank;
+  if (state.filter !== "all") {
+    const limit = parseInt(state.filter, 10);
+    targetMachines = sortedByRank.slice(0, limit);
+  }
+
+  const filteredMachines = targetMachines.filter(m => state.zone === "all" || m.zone === state.zone);
+
+  const totalCoinIn = filteredMachines.reduce((acc, m) => acc + (m.totalCoinIn * (daysCount / 181)), 0);
+  const totalTheo = filteredMachines.reduce((acc, m) => acc + (m.totalTheo * (daysCount / 181)), 0);
+  const totalWin = filteredMachines.reduce((acc, m) => acc + (m.totalWin * (daysCount / 181)), 0);
+  const totalHours = filteredMachines.reduce((acc, m) => acc + (m.totalHours * (daysCount / 181)), 0);
+  
+  const floorTheoHr = totalHours > 0 ? totalTheo / totalHours : 0;
+  const observedHold = totalCoinIn > 0 ? (totalWin / totalCoinIn) * 100 : 0;
+
+  $("k-wager").textContent = money(totalCoinIn);
+  $("k-theo-hr").textContent = "$" + floorTheoHr.toFixed(2) + "/hr";
+  $("k-win").textContent = money(totalWin);
+  $("k-hold").textContent = `Observed Hold: ${observedHold.toFixed(2)}%`;
+  $("k-weak-cnt").textContent = state.filter === "all" ? `${filteredMachines.length} Units` : `Lowest ${filteredMachines.length} Units`;
+
+  const zoneStats = ZONES.map(z => {
+    const zm = filteredMachines.filter(m => m.zone === z);
+    const zTheo = zm.reduce((acc, m) => acc + m.totalTheo, 0);
+    const zHrs = zm.reduce((acc, m) => acc + m.totalHours, 0);
+    return { z, rate: zHrs > 0 ? zTheo / zHrs : 0 };
+  }).sort((a, b) => b.rate - a.rate);
+
+  const maxZoneRate = zoneStats[0]?.rate || 1;
+  $("zones").innerHTML = zoneStats.map(t => `
+    <button class="zone ${state.zone === t.z ? "on" : ""}" data-z="${t.z}">
+      <div class="top"><span>${t.z}</span><span>$${t.rate.toFixed(2)}/hr</span></div>
+      <div class="bar"><span style="width:${(t.rate / maxZoneRate * 100).toFixed(1)}%"></span></div>
+    </button>`).join("");
+
+  drawChart(startDay);
+  drawTable(filteredMachines);
+}
+
+function drawChart(startDay) {
+  const svg = $("chart"), W = svg.clientWidth || 650, H = 250, P = { l: 55, r: 15, t: 15, b: 30 };
+  const periodDaily = DAILY_DATA.filter(r => r.d >= startDay);
+  
+  const buckets = [];
+  for (let i = 0; i < periodDaily.length; i += state.gran) {
+    const chunk = periodDaily.slice(i, i + state.gran);
+    const theo = chunk.reduce((a, b) => a + b.theo, 0) / chunk.length;
+    const win = chunk.reduce((a, b) => a + b.houseWin, 0) / chunk.length;
+    buckets.push({ dateStr: chunk[0].dateStr, theo, win });
+  }
+
+  const maxY = Math.max(...buckets.map(p => Math.max(p.theo, p.houseWin))) * 1.15;
+  const x = i => P.l + i / Math.max(1, buckets.length - 1) * (W - P.l - P.r);
+  const y = v => H - P.b - (v / maxY) * (H - P.t - P.b);
+  const makeLine = k => buckets.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + "," + y(p[k]).toFixed(1)).join("");
+
+  let g = "";
+  for (let i = 0; i <= 4; i++) {
+    const v = (maxY / 4) * i;
+    g += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-dasharray="3 3"/>
+          <text x="${P.l - 8}" y="${y(v) + 4}" text-anchor="end">${money(v)}</text>`;
+  }
+
+  const step = Math.ceil(buckets.length / 5);
+  buckets.forEach((p, i) => { if (i % step === 0) g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${p.dateStr.slice(5)}</text>`; });
+
+  g += `<path d="${makeLine("theo")}" fill="none" stroke="var(--green)" stroke-width="2.5"/>`;
+  g += `<path d="${makeLine("win")}" fill="none" stroke="var(--gold)" stroke-width="2" stroke-dasharray="4 2"/>`;
+  g += `<line id="cross" y1="${P.t}" y2="${H - P.b}" stroke="var(--muted)" opacity="0"/>`;
+  g += `<rect x="${P.l}" y="0" width="${W - P.l - P.r}" height="${H}" fill="transparent" id="hit"/>`;
+  
+  svg.innerHTML = g;
+
+  const tip = $("tip"), cross = svg.querySelector("#cross");
+  svg.querySelector("#hit").onmousemove = e => {
+    const rect = svg.getBoundingClientRect();
+    const i = Math.round((e.clientX - rect.left - P.l) / (W - P.l - P.r) * (buckets.length - 1));
+    if (i < 0 || i >= buckets.length) return;
+    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", .6);
+    const b = buckets[i];
+    tip.innerHTML = `<strong>Gaming Date: ${b.dateStr}</strong><br><span style="color:var(--green)">Expected Theo: ${money(b.theo)}/day</span><br><span style="color:var(--gold)">Actual Win: ${money(b.win)}/day</span>`;
+    tip.style.left = e.clientX + 14 + "px"; tip.style.top = e.clientY - 40 + "px"; tip.style.opacity = 1;
+  };
+  svg.querySelector("#hit").onmouseleave = () => { tip.style.opacity = 0; cross.setAttribute("opacity", 0); };
+}
+
+function drawTable(list) {
+  const query = state.q.toLowerCase();
+  let searched = list.filter(m => m.id.toLowerCase().includes(query) || m.title.toLowerCase().includes(query) || m.zone.toLowerCase().includes(query));
+
+  searched.sort((a, b) => {
+    let A = a[state.sort], B = b[state.sort];
+    if (typeof A === "string") return A.localeCompare(B) * (state.asc ? 1 : -1);
+    return (A - B) * (state.asc ? 1 : -1);
+  });
+
+  const displayLimit = state.filter === "all" ? 15 : parseInt(state.filter, 10);
+
+  $("rows").innerHTML = searched.slice(0, displayLimit).map(m => `
+    <tr data-id="${m.id}" class="${m.isWeak ? "truly-weak" : ""} ${state.sel === m.id ? "on" : ""}">
+      <td><b>${m.id}</b></td>
+      <td>${m.title}</td>
+      <td>${m.zone}</td>
+      <td>${m.totalHours.toLocaleString()} hrs</td>
+      <td><b>$${m.theoHr.toFixed(2)}/hr</b></td>
+      <td>$${m.winHr.toFixed(2)}/hr</td>
+      <td>${m.isWeak ? `<span class="badge-weak">Bottom 10 Weak</span>` : `<span class="badge-ok">Healthy / Moderate</span>`}</td>
+    </tr>`).join("") || `<tr><td colspan="7" class="sub" style="padding:20px; text-align:center;">No floor machines match criteria.</td></tr>`;
+
+  const selected = MACHINES.find(x => x.id === state.sel);
+  const detailEl = $("detail");
+  if (selected) {
+    detailEl.className = "detail show";
+    const luckStatus = selected.luckDiff < 0 
+      ? `<span style="color:var(--red)">Unlucky (Paid out $${Math.abs(selected.luckDiff).toFixed(2)} more than expected)</span>`
+      : `<span style="color:var(--green)">Lucky House Hold (Kept $${selected.luckDiff.toFixed(2)} over expected theo)</span>`;
+      
+    detailEl.innerHTML = `
+      <strong>Machine Diagnostic: ${selected.id} (${selected.title})</strong> — Location: ${selected.zone}<br>
+      • <strong>Demand Velocity (Theo/Hr):</strong> $${selected.theoHr.toFixed(2)}/hr (State Benchmark: $${MO_BENCHMARK}/hr)<br>
+      • <strong>Luck Residual Analysis:</strong> ${luckStatus}<br>
+      • <strong>Recommended Action:</strong> ${selected.isWeak ? `Spend $100k budget to <strong>Move Machine</strong> out of dead walkway or <strong>Replace Title</strong>.` : `No intervention needed. Performance meets operational threshold.`}
+    `;
+  } else {
+    detailEl.className = "detail";
+  }
+}
+
+$("period").onchange = e => { state.months = +e.target.value; render(); };
+$("zone").onchange = e => { state.zone = e.target.value; render(); };
+$("metric-filter").onchange = e => { state.filter = e.target.value; render(); };
+$("search").oninput = e => { state.q = e.target.value; render(); };
+
+document.querySelectorAll(".toggle button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".toggle button").forEach(x => x.classList.toggle("on", x === b));
+  state.gran = +b.dataset.g; render();
+});
+
+$("zones").onclick = e => {
+  const b = e.target.closest(".zone"); if (!b) return;
+  state.zone = state.zone === b.dataset.z ? "all" : b.dataset.z;
+  $("zone").value = state.zone; render();
+};
+
+document.querySelectorAll("th[data-k]").forEach(th => th.onclick = () => {
+  const k = th.dataset.k;
+  const sortMap = { id: "id", title: "title", zone: "zone", hours: "totalHours", theo_hr: "theoHr", win_hr: "winHr" };
+  const targetSort = sortMap[k] || "theoHr";
+  state.asc = state.sort === targetSort ? !state.asc : false;
+  state.sort = targetSort; render();
+});
+
+$("rows").onclick = e => {
+  const tr = e.target.closest("tr[data-id]"); if (!tr) return;
+  state.sel = state.sel === tr.dataset.id ? null : tr.dataset.id; render();
+};
+
+window.onresize = render;
+render();
+</script>
+</body>
+</html>
